@@ -1,0 +1,10 @@
+# Süre Takip — çalışma zamanı bağımlılıkları
+#
+# Kurulum:
+#     pip install -r requirements.txt
+#
+# Linux'ta ayrıca Tk gerekir (Windows ve macOS'ta Python ile birlikte gelir):
+#     sudo apt install python3-tk
+
+customtkinter>=5.2.0     # modern arayüz bileşenleri
+openpyxl>=3.1.0          # .xlsx içe/dışa aktarma

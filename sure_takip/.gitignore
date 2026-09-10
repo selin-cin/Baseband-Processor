@@ -1,0 +1,15 @@
+# Yerel veritabanı ve yedekleri (kişisel veri içerir, depoya girmemeli)
+*.db
+*.db-wal
+*.db-shm
+
+# Dışa aktarılan Excel dosyaları
+*.xlsx
+*.xlsm
+
+# Python
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.spec
