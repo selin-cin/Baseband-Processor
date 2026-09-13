@@ -323,6 +323,40 @@ def tarih_metin(deger: date | None) -> str:
     return deger.isoformat() if deger else ""
 
 
+# --- Konsol çıktısı (Windows cp1252 uyumu) -------------------------------
+# Windows'ta konsol kod sayfası genelde cp1252'dir ve "✓" gibi işaretleri,
+# hatta "ı ğ ş İ" harflerini basamaz; doğrudan print() UnicodeEncodeError
+# ile ÇÖKER. Aşağıdaki yardımcılar akışı UTF-8'e çevirmeyi dener, olmazsa
+# basılamayan karakterleri güvenle değiştirir.
+
+def _konsolu_hazirla() -> None:
+    """Standart çıktıyı, Unicode karakterlerde çökmeyecek hâle getirir."""
+    for akis in (sys.stdout, sys.stderr):
+        try:
+            akis.reconfigure(encoding="utf-8", errors="replace")  # Python 3.7+
+        except (AttributeError, OSError, ValueError):
+            pass
+
+
+def _basilabilir_mi(ornek: str) -> bool:
+    """Verilen metin, etkin konsol kodlamasıyla basılabiliyor mu?"""
+    kodlama = getattr(sys.stdout, "encoding", None) or "ascii"
+    try:
+        ornek.encode(kodlama)
+        return True
+    except (UnicodeEncodeError, LookupError):
+        return False
+
+
+def yaz(metin: str = "") -> None:
+    """Konsola, kodlama hatasına düşmeden yazar."""
+    try:
+        print(metin)
+    except UnicodeEncodeError:
+        kodlama = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(metin.encode(kodlama, "replace").decode(kodlama, "replace"))
+
+
 # Türkçe harfleri arama/karşılaştırma için sadeleştirme tablosu.
 _TR_SADE = str.maketrans({
     "ı": "i", "İ": "i", "I": "i", "i": "i",
@@ -1842,16 +1876,19 @@ class Uygulama(ctk.CTk):
 def kendini_test_et() -> int:
     """Arayüz açmadan iş kurallarını doğrular. Hata sayısını döndürür."""
     hatalar: list[str] = []
+    _konsolu_hazirla()
+    # Dar kod sayfalı konsollarda (Windows cmd) ASCII işaretlere düşülür.
+    onay, hata_im = ("✓", "✗") if _basilabilir_mi("✓✗ığş") else ("[OK]", "[!!]")
 
     def kontrol(aciklama: str, elde_edilen, beklenen) -> None:
         if elde_edilen != beklenen:
-            hatalar.append(f"  ✗ {aciklama}\n      beklenen: {beklenen!r}\n      "
+            hatalar.append(f"  {hata_im} {aciklama}\n      beklenen: {beklenen!r}\n      "
                            f"elde edilen: {elde_edilen!r}")
         else:
-            print(f"  ✓ {aciklama}")
+            yaz(f"  {onay} {aciklama}")
 
     bugun = date(2026, 9, 10)
-    print("Durum hesaplama (referans gün: 2026-09-10)")
+    yaz("Durum hesaplama (referans gün: 2026-09-10)")
     kontrol("Süre Sonu boş -> ''", durum_hesapla(None, bugun), DURUM_BOS)
     kontrol("+31 gün -> NORMAL", durum_hesapla(bugun + timedelta(days=31), bugun), DURUM_NORMAL)
     kontrol("+30 gün -> DİKKAT (sınır)", durum_hesapla(bugun + timedelta(days=30), bugun), DURUM_DIKKAT)
@@ -1863,7 +1900,7 @@ def kendini_test_et() -> int:
     kontrol("-60 gün -> TEHLİKELİ (sınır)", durum_hesapla(bugun - timedelta(days=60), bugun), DURUM_TEHLIKELI)
     kontrol("-61 gün -> süre geçti", durum_hesapla(bugun - timedelta(days=61), bugun), DURUM_GECTI)
 
-    print("\nTarih ayıklama")
+    yaz("\nTarih ayıklama")
     kontrol("'2026-10-08'", tarih_ayikla("2026-10-08"), date(2026, 10, 8))
     kontrol("'08.10.2026'", tarih_ayikla("08.10.2026"), date(2026, 10, 8))
     kontrol("'08/10/2026'", tarih_ayikla("08/10/2026"), date(2026, 10, 8))
@@ -1873,7 +1910,7 @@ def kendini_test_et() -> int:
     kontrol("boş metin", tarih_ayikla("   "), None)
     kontrol("geçersiz metin", tarih_ayikla("abc"), None)
 
-    print("\nTürkçe arama sadeleştirme")
+    yaz("\nTürkçe arama sadeleştirme")
     kontrol("'İŞIN' -> 'isin'", tr_sadelestir("IŞIN"), "isin")
     kontrol("'Gürpom' -> 'gurpom'", tr_sadelestir("Gürpom"), "gurpom")
     kontrol("başlık 'Beyanna No'", baslik_anahtari("Beyanna No") in
@@ -1881,13 +1918,13 @@ def kendini_test_et() -> int:
     kontrol("başlık 'Süre Sonu'", baslik_anahtari("Süre Sonu") in
             BASLIK_ESLESTIRME["sure_sonu"], True)
 
-    print("\nŞifre yönetimi")
+    yaz("\nŞifre yönetimi")
     ozet = sifre_ozetle("admin123", dongu=1000)
     kontrol("doğru şifre kabul", sifre_karsilastir("admin123", ozet), True)
     kontrol("yanlış şifre ret", sifre_karsilastir("admin124", ozet), False)
     kontrol("bozuk özet ret", sifre_karsilastir("admin123", "cop"), False)
 
-    print("\nPaketlenmiş (.exe) çalışma yolu")
+    yaz("\nPaketlenmiş (.exe) çalışma yolu")
     onceki = getattr(sys, "frozen", None)
     try:
         sys.frozen = True          # PyInstaller'ın yaptığını taklit et
@@ -1911,7 +1948,7 @@ def kendini_test_et() -> int:
     finally:
         engel_yolu.unlink(missing_ok=True)
 
-    print("\nVeritabanı (geçici, bellek içi)")
+    yaz("\nVeritabanı (geçici, bellek içi)")
     gecici = Veritabani(Path(tempfile.gettempdir()) / f"_st_test_{os.getpid()}.db")
     try:
         yeni_id = gecici.kayit_ekle({
@@ -1940,12 +1977,12 @@ def kendini_test_et() -> int:
         except OSError:
             pass
 
-    print()
+    yaz()
     if hatalar:
-        print(f"{len(hatalar)} TEST BAŞARISIZ:")
-        print("\n".join(hatalar))
+        yaz(f"{len(hatalar)} TEST BASARISIZ:")
+        yaz("\n".join(hatalar))
     else:
-        print("Tüm testler başarılı.")
+        yaz("Tum testler basarili.")     # saf ASCII: her konsolda okunur
     return len(hatalar)
 
 
@@ -1981,11 +2018,13 @@ def main(argv: list[str] | None = None) -> int:
     if argumanlar.sifre_sifirla:
         veritabani.sifre_degistir(VARSAYILAN_SIFRE)
         veritabani.kapat()
-        print(f"Yönetici şifresi varsayılana döndürüldü: {VARSAYILAN_SIFRE}")
+        _konsolu_hazirla()
+        yaz(f"Yonetici sifresi varsayilana donduruldu: {VARSAYILAN_SIFRE}")
         return 0
 
     if ARAYUZ_HATASI is not None:      # Tk / CustomTkinter kurulu değil
         veritabani.kapat()
+        _konsolu_hazirla()
         print(
             "Arayüz başlatılamadı.\n\n"
             f"Ayrıntı: {ARAYUZ_HATASI}\n\n"
