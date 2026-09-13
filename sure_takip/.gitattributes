@@ -1,0 +1,13 @@
+# Windows toplu is / PowerShell dosyaları CRLF olmalı:
+# LF satır sonlu .bat dosyalarında cmd.exe "goto" etiketlerini şaşırabilir.
+*.bat       text eol=crlf
+*.ps1       text eol=crlf
+
+# Unix kabuk betikleri her zaman LF (CRLF olursa "bad interpreter" hatası verir)
+*.sh        text eol=lf
+*.command   text eol=lf
+
+# İkili dosyalar
+*.ico       binary
+*.png       binary
+*.xlsx      binary

@@ -61,6 +61,7 @@ import re
 import secrets
 import sqlite3
 import sys
+import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -98,9 +99,48 @@ except Exception as _hata:  # pragma: no cover - ortama bağlı
 UYGULAMA_ADI = "Süre Takip"
 SURUM = "1.0"
 
-# Uygulamanın bulunduğu klasör (veritabanı varsayılan olarak buraya yazılır).
-UYGULAMA_KLASORU = Path(__file__).resolve().parent
-VARSAYILAN_VERITABANI = UYGULAMA_KLASORU / "sure_takip.db"
+
+
+def _uygulama_klasoru() -> Path:
+    """Uygulamanın kendi klasörü.
+
+    PyInstaller ile tek dosyalık .exe hâline getirildiğinde `__file__`
+    geçici bir çıkarma klasörünü (``_MEIPASS``) gösterir; oraya yazılan
+    veritabanı program kapanınca SİLİNİR. Bu yüzden paketlenmiş çalışmada
+    .exe dosyasının bulunduğu klasör kullanılır.
+    """
+    if getattr(sys, "frozen", False):          # PyInstaller / cx_Freeze
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+def _yazilabilir_mi(klasor: Path) -> bool:
+    """Klasöre dosya yazılabiliyor mu? (Program Files gibi korumalı yerler için)"""
+    try:
+        klasor.mkdir(parents=True, exist_ok=True)
+        deneme = klasor / ".yazma_denemesi"
+        deneme.write_text("x", encoding="utf-8")
+        deneme.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def _varsayilan_veritabani() -> Path:
+    """Veritabanı dosyasının varsayılan konumu.
+
+    Öncelik uygulamanın kendi klasörüdür (taşınabilirlik: klasörü kopyalamak
+    verileri de taşır). O klasör salt okunursa (örn. "Program Files" altına
+    kurulmuşsa) kullanıcının kendi klasörüne düşülür.
+    """
+    klasor = _uygulama_klasoru()
+    if _yazilabilir_mi(klasor):
+        return klasor / "sure_takip.db"
+    return Path.home() / "SureTakip" / "sure_takip.db"
+
+
+UYGULAMA_KLASORU = _uygulama_klasoru()
+VARSAYILAN_VERITABANI = _varsayilan_veritabani()
 
 # Yönetici şifresi — yalnızca veritabanı ilk kez oluşturulduğunda veya
 # "--sifre-sifirla" komutu çalıştırıldığında geçerlidir. Sonrasında şifre,
@@ -1847,8 +1887,32 @@ def kendini_test_et() -> int:
     kontrol("yanlış şifre ret", sifre_karsilastir("admin124", ozet), False)
     kontrol("bozuk özet ret", sifre_karsilastir("admin123", "cop"), False)
 
+    print("\nPaketlenmiş (.exe) çalışma yolu")
+    onceki = getattr(sys, "frozen", None)
+    try:
+        sys.frozen = True          # PyInstaller'ın yaptığını taklit et
+        kontrol(".exe yanındaki klasör kullanılıyor",
+                _uygulama_klasoru(), Path(sys.executable).resolve().parent)
+    finally:
+        if onceki is None:
+            del sys.frozen
+        else:
+            sys.frozen = onceki
+    kontrol("betik olarak çalışırken betik klasörü",
+            _uygulama_klasoru(), Path(__file__).resolve().parent)
+    kontrol("yazılabilirlik denetimi (uygulama klasörü)",
+            _yazilabilir_mi(_uygulama_klasoru()), True)
+    # Ebeveyni bir DOSYA olan yol: mkdir hem Windows'ta hem Unix'te başarısız olur.
+    with tempfile.NamedTemporaryFile(suffix=".engel", delete=False) as engel:
+        engel_yolu = Path(engel.name)
+    try:
+        kontrol("yazılamayan klasörde geri düşüş",
+                _yazilabilir_mi(engel_yolu / "altklasor"), False)
+    finally:
+        engel_yolu.unlink(missing_ok=True)
+
     print("\nVeritabanı (geçici, bellek içi)")
-    gecici = Veritabani(Path(os.environ.get("TMPDIR", "/tmp")) / f"_st_test_{os.getpid()}.db")
+    gecici = Veritabani(Path(tempfile.gettempdir()) / f"_st_test_{os.getpid()}.db")
     try:
         yeni_id = gecici.kayit_ekle({
             "dosya_no": "26-12440", "firma": "AKSA",

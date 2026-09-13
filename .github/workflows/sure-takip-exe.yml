@@ -1,0 +1,83 @@
+# Süre Takip — Windows .exe üretimi
+#
+# Amaç: Windows'ta derleme yapmaya gerek kalmadan, tek dosyalık
+# SureTakip.exe dosyasını GitHub üzerinde üretmek. Üretilen dosya
+# Actions sekmesindeki çalıştırma sayfasından "Artifacts" bölümünden
+# indirilir; hiçbir kurulum gerektirmeden çift tıklanarak çalışır.
+#
+# Elle çalıştırmak için: Actions > "Süre Takip — Windows EXE" > Run workflow
+
+name: Süre Takip — Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "sure_takip/**"
+      - ".github/workflows/sure-takip-exe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  derle:
+    name: SureTakip.exe derle
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: sure_takip
+
+    steps:
+      - name: Depoyu al
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: sure_takip/requirements.txt
+
+      - name: Bağımlılıkları kur
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: İş kurallarını test et
+        run: python sure_takip.py --test
+
+      - name: EXE derle
+        run: >
+          python -m PyInstaller
+          --noconfirm
+          --onefile
+          --windowed
+          --name SureTakip
+          --icon simge.ico
+          --collect-all customtkinter
+          sure_takip.py
+
+      - name: EXE açılıyor mu (duman testi)
+        shell: pwsh
+        run: |
+          # Uygulamayı kısa süre açıp kendi klasörüne veritabanı yazdığını doğrula.
+          $exe = Join-Path (Get-Location) "dist\SureTakip.exe"
+          $surec = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 25
+          if ($surec.HasExited) {
+            throw "SureTakip.exe beklenmedik sekilde kapandi (cikis kodu: $($surec.ExitCode))"
+          }
+          Stop-Process -Id $surec.Id -Force
+          $db = Join-Path (Get-Location) "dist\sure_takip.db"
+          if (-not (Test-Path $db)) {
+            throw "Veritabani .exe klasorunde olusmadi: $db"
+          }
+          Write-Host "Duman testi basarili: veritabani .exe yaninda olustu."
+
+      - name: EXE'yi yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SureTakip-windows-exe
+          path: sure_takip/dist/SureTakip.exe
+          if-no-files-found: error
+          retention-days: 90

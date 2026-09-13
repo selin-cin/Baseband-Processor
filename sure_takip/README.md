@@ -8,28 +8,92 @@ veriler yerel bir **SQLite** veritabanında saklanır.
 
 ---
 
-## Kurulum
+## Kurulum — hangi yolu seçmeliyim?
+
+Uygulamayı kullanacak kişinin **hiçbir komut yazmasına gerek yoktur.** Üç yol var;
+ilki en kolayı:
+
+| | Yol | Kullanacak kişinin yapması gereken | Bilgisayarda Python gerekir mi? |
+|---|---|---|---|
+| **A** | Hazır `.exe` | `SureTakip.exe`'ye çift tıklamak | ❌ Hayır |
+| **B** | `KURULUM.bat` | Bir kez kuruluma, sonra masaüstü simgesine çift tıklamak | ✅ Evet (bir kez) |
+| **C** | `Sure Takip.command` | Dosyaya çift tıklamak (macOS / Linux) | ✅ Evet |
+
+---
+
+### A) Hazır `.exe` — hiçbir kurulum istemiyorum  *(önerilen)*
+
+Karşı bilgisayarda Python, kütüphane, kurulum **hiçbir şey** gerekmez. Tek bir
+dosya kopyalanır, çift tıklanır, açılır.
+
+**`.exe` dosyasını iki şekilde elde edebilirsiniz:**
+
+**1. GitHub üzerinde otomatik üretim** (Windows bilgisayarınız yoksa bile olur)
+
+1. Bu deponun **Actions** sekmesine girin
+2. Soldan **"Süre Takip — Windows EXE"** iş akışını seçin
+3. **Run workflow** düğmesine basın ve bitmesini bekleyin (~3 dk)
+4. Açılan çalıştırma sayfasının altındaki **Artifacts** bölümünden
+   `SureTakip-windows-exe` dosyasını indirin, zip'ten çıkarın
+
+**2. Kendi Windows bilgisayarınızda üretim**
+
+`araclar\derle_exe.bat` dosyasına çift tıklayın. İşlem bitince
+`dist\SureTakip.exe` oluşur.
+
+**Sonra:** `SureTakip.exe` dosyasını babanızın bilgisayarında bir klasöre
+(örn. `Belgeler\Süre Takip\`) kopyalayın, simgesine sağ tıklayıp
+**"Başlat ekranına sabitle"** ya da masaüstüne kısayol oluşturun. Hepsi bu.
+
+> **Önemli:** Veritabanı (`sure_takip.db`) `.exe` ile **aynı klasörde** oluşur.
+> Bu yüzden `.exe`'yi kendi klasörüne koyun, Masaüstü'ne doğrudan atmayın —
+> yoksa veritabanı da masaüstünde durur. Yedek almak için o klasörü kopyalamak
+> yeterlidir.
+
+---
+
+### B) `KURULUM.bat` — Windows'ta Python ile
+
+Bilgisayarda Python varsa (ya da kurmaya isteklisiniz) bu yol daha kolaydır,
+çünkü uygulamayı güncellemek için yalnızca `sure_takip.py` dosyasını
+değiştirmek yeterli olur.
+
+1. Bu klasörü babanızın bilgisayarına kopyalayın
+2. **`KURULUM.bat`** dosyasına **bir kez** çift tıklayın. Bu dosya:
+   - Python'u arar, yoksa nasıl kurulacağını ekranda anlatır
+   - Gerekli kütüphaneleri (`customtkinter`, `openpyxl`) kurar
+   - **Masaüstüne ve Başlat menüsüne "Süre Takip" kısayolu** koyar
+3. Bundan sonra masaüstündeki simgeye çift tıklamak yeterli
+
+Kısayol `pythonw.exe`'yi hedef aldığı için açılışta **siyah konsol penceresi
+görünmez**; normal bir Windows programı gibi davranır.
+
+Kısayol oluşmazsa sorun değil: klasördeki **`Sure Takip - Baslat.bat`**
+dosyasına çift tıklamak da uygulamayı açar.
+
+---
+
+### C) macOS / Linux
+
+**`Sure Takip.command`** dosyasına çift tıklayın. Eksik kütüphane varsa kendisi
+kurar, sonra uygulamayı açar.
+
+macOS'ta ilk açılışta "geliştirici doğrulanamadı" uyarısı çıkarsa: dosyaya
+**sağ tıklayıp → Aç** deyin, bir kez onaylayın; sonraki açılışlarda sormaz.
+
+Linux'ta Tk paketi ayrıca gerekir:
 
 ```bash
-pip install customtkinter openpyxl
+sudo apt install python3-tk        # Debian / Ubuntu
+sudo dnf install python3-tkinter   # Fedora
 ```
 
-veya:
+---
+
+### D) Geliştirici kurulumu (komut satırı)
 
 ```bash
-pip install -r requirements.txt
-```
-
-Linux kullanıyorsanız Tk paketi de gerekir (Windows ve macOS'ta Python ile
-birlikte gelir):
-
-```bash
-sudo apt install python3-tk
-```
-
-## Çalıştırma
-
-```bash
+pip install -r requirements.txt      # veya: pip install customtkinter openpyxl
 python sure_takip.py
 ```
 
@@ -41,7 +105,7 @@ Tüm kayıtlar bu dosyada tutulur; uygulama kapansa bile veriler kaybolmaz.
 | Komut | Açıklama |
 |---|---|
 | `python sure_takip.py` | Uygulamayı açar |
-| `python sure_takip.py --test` | Arayüz açmadan iş kurallarını doğrular (33 test) |
+| `python sure_takip.py --test` | Arayüz açmadan iş kurallarını doğrular (35 test) |
 | `python sure_takip.py --sifre-sifirla` | Yönetici şifresini varsayılana (`admin123`) döndürür |
 | `python sure_takip.py --veritabani D:\takip\veri.db` | Farklı bir veritabanı dosyası kullanır |
 
@@ -193,7 +257,22 @@ görünen kayıtları mı yoksa tümünü mü aktaracağınız sorulur.
 
 ## Veri saklama ve yedekleme
 
-Tüm veriler tek bir dosyada tutulur: **`sure_takip.db`** (uygulamayla aynı klasör).
+Tüm veriler tek bir dosyada tutulur: **`sure_takip.db`**
+
+Dosyanın konumu:
+
+| Çalışma biçimi | Veritabanının yeri |
+|---|---|
+| `python sure_takip.py` | `sure_takip.py` ile aynı klasör |
+| `SureTakip.exe` (paketlenmiş) | **`.exe` ile aynı klasör** |
+| Yukarıdaki klasör salt okunursa | `<kullanıcı klasörü>/SureTakip/` |
+
+Güncel yol her zaman uygulamanın **alt bilgi çubuğunda** yazılıdır; emin
+olmak isterseniz oraya bakın.
+
+> Paketlenmiş sürümde veritabanı, PyInstaller'ın geçici çıkarma klasörüne
+> değil `.exe`'nin yanına yazılır — aksi hâlde program her kapandığında tüm
+> kayıtlar silinirdi.
 
 Yedeklemek için bu dosyayı kopyalamanız yeterlidir. Uygulama açıkken WAL kipi
 kullanıldığından, yedek alırken `sure_takip.db-wal` ve `sure_takip.db-shm`
@@ -209,20 +288,6 @@ python sure_takip.py --veritabani "D:\Ortak\takip\sure_takip.db"
 
 ---
 
-## Windows'ta tek dosyalık .exe üretme (isteğe bağlı)
-
-Bilgisayarında Python olmayan kullanıcılar için:
-
-```bash
-pip install pyinstaller
-pyinstaller --onefile --windowed --name "SureTakip" sure_takip.py
-```
-
-Oluşan `dist/SureTakip.exe` dosyası tek başına çalışır. Veritabanı `.exe` ile
-aynı klasörde oluşur.
-
----
-
 ## Sorun giderme
 
 | Belirti | Çözüm |
@@ -233,6 +298,12 @@ aynı klasörde oluşur.
 | Şifre unutuldu | `python sure_takip.py --sifre-sifirla` |
 | "Dosya açık" hatasıyla dışa aktarılamıyor | Hedef `.xlsx` dosyasını Excel'de kapatın |
 | Satır renkleri görünmüyor | Uygulama Tk'nin bilinen etiket-rengi hatasını kendisi düzeltir; sorun sürerse Python'u güncelleyin |
+| `KURULUM.bat` "Python bulunamadi" diyor | Python'u kurarken **"Add python.exe to PATH"** kutusunu işaretlemeyi atlamış olabilirsiniz. Python'u kaldırıp bu kutu işaretli olarak yeniden kurun, ya da A yolundaki hazır `.exe`'yi kullanın |
+| Masaüstü kısayolu oluşmadı | Klasördeki `Sure Takip - Baslat.bat` dosyasına çift tıklayın; aynı işi yapar |
+| `.bat` dosyası açılıp hemen kapanıyor | Dosyaya sağ tıklayıp **Düzenle** ile açın ve komut satırından çalıştırarak hatayı görün; ya da `Sure Takip - Baslat.bat` yerine `KURULUM.bat`'ı çalıştırın |
+| macOS: "geliştirici doğrulanamadı" | `Sure Takip.command` dosyasına **sağ tıklayıp → Aç** deyin, bir kez onaylayın |
+| macOS/Linux: "permission denied" | `chmod +x "Sure Takip.command"` komutunu bir kez çalıştırın |
+| `.exe` açılıyor ama kayıtlar kayboluyor | `.exe`'yi her açılışta farklı bir klasörden çalıştırıyor olabilirsiniz. Veritabanı `.exe`'nin yanında oluşur; `.exe`'yi sabit bir klasörde tutun (alt bilgi çubuğunda güncel veritabanı yolu yazılıdır) |
 
 ---
 
@@ -240,10 +311,27 @@ aynı klasörde oluşur.
 
 ```
 sure_takip/
-├── sure_takip.py        # Uygulamanın tamamı (tek dosya)
-├── requirements.txt     # Bağımlılıklar
-├── README.md            # Bu belge
-└── sure_takip.db        # İlk çalıştırmada otomatik oluşur (depoya girmez)
+├── sure_takip.py                # Uygulamanın tamamı (tek dosya)
+│
+├── KURULUM.bat                  # Windows: bir kez çift tıkla — kurar + kısayol yapar
+├── Sure Takip - Baslat.bat      # Windows: klasörden çift tıklayarak çalıştır
+├── Sure Takip.command           # macOS / Linux: çift tıklayarak çalıştır
+│
+├── araclar/
+│   ├── derle_exe.bat            # Tek dosyalık SureTakip.exe üretir
+│   └── kisayol_olustur.ps1      # Masaüstü/Başlat kısayolunu oluşturur
+│
+├── simge.ico                    # Uygulama simgesi (kısayol ve .exe için)
+├── requirements.txt             # Bağımlılıklar
+├── README.md                    # Bu belge
+├── ekran-goruntusu.png          # Belgelerdeki ekran görüntüsü
+└── sure_takip.db                # İlk çalıştırmada otomatik oluşur (depoya girmez)
+```
+
+Ayrıca depo kökünde:
+
+```
+.github/workflows/sure-takip-exe.yml   # GitHub'da Windows .exe üretir
 ```
 
 `sure_takip.py` içindeki bölümler:
